@@ -1,0 +1,51 @@
+#!/usr/bin/perl -w
+
+# credits: Benjamin Mako Hill
+# origin:  http://projects.mako.cc/source/?p=beamer-mako;a=blob_plain;f=template/extract-notes;hb=HEAD
+
+foreach $filename (@ARGV) {
+    chomp $filename;
+    open(TEXFILE, "<$filename");
+
+    $notes_filename = $filename;
+    $notes_filename =~ s/\.tex$/.pdfpc/;
+
+    $pdf_filename = $filename;
+    $pdf_filename =~ s/\.tex$/.pdf/;
+
+    open(NOTESFILE, "\>$notes_filename");
+    print NOTESFILE "[file]\n$pdf_filename\n[notes]\n";
+
+    $note_record = 0;
+    $slide_counter = 1;
+    while ($line = <TEXFILE>) {
+        # if this is a new frame
+        if ($line =~ /^\\begin\{frame\}/) {
+            $slide_counter++;
+        }
+        
+        if ($line =~ /^\% pdfpc\:end/) {
+            $note_record = 0;
+            $note_text =~ s/^\s*(.*?)\s*$/$1/;
+            print NOTESFILE "\#\#\# $slide_counter\n$note_text\n";
+        }
+        
+        # record if we're between a begin and an end
+        if ($note_record) {
+            $line_tmp = $line;
+            $line_tmp =~ s/^\%\s*//; 
+            $note_text = $note_text . $line_tmp;
+        }
+
+        # if this a new note
+        if ($line =~ /^\% pdfpc\:begin/) {
+            $note_text = "";
+            $note_record = 1;
+        }
+    }
+
+    close(TEXFILE);
+    close(NOTESFILE);
+
+}
+
